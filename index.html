@@ -4,17 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Google Maps Review Scraper</title>
+
   <style>
     body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
     .container { max-width: 600px; width: 100%; }
     .form-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; }
-    input[type="text"], input[type="number"] { width: 100%; padding: 8px; }
+    input[type="text"] { width: 100%; padding: 8px; }
     button { padding: 10px 15px; cursor: pointer; }
-    .reviews { margin-top: 20px; }
+    .reviews { margin-top: 20px; width: 100%; }
     .review { padding: 10px; border-bottom: 1px solid #ddd; }
     .review h4 { margin: 0; font-size: 1.1em; }
     .rating { color: gold; }
+    .stats { margin-top: 20px; width: 100%; }
+    .stats div { margin-bottom: 10px; }
+    .star-rating { font-size: 20px; }
   </style>
 </head>
 <body>
@@ -24,28 +28,26 @@
       <label for="url">Google Maps URL:</label>
       <input type="text" id="url" placeholder="Enter Google Maps URL">
     </div>
-    <div class="form-group">
-      <label for="numReviews">Number of Reviews:</label>
-      <input type="number" id="numReviews" placeholder="Enter number of reviews">
-    </div>
     <button onclick="fetchReviews()">Get Reviews</button>
+
+    <div class="stats" id="stats"></div>
+
     <div class="reviews" id="reviews"></div>
   </div>
 
   <script>
     async function fetchReviews() {
       const url = document.getElementById('url').value;
-      const numReviews = parseInt(document.getElementById('numReviews').value);
 
-      if (!url || !numReviews) {
-        alert('Please enter both URL and number of reviews.');
+      if (!url) {
+        alert('Please enter a Google Maps URL.');
         return;
       }
 
       const response = await fetch('http://localhost:3000/scrape-reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, numReviews })
+        body: JSON.stringify({ url })
       });
 
       if (!response.ok) {
@@ -53,33 +55,36 @@
         return;
       }
 
-      const reviews = await response.json();
-      displayReviews(reviews);
+      const reviewData = await response.json();
+      displayStats(reviewData);
     }
 
-    function displayReviews(reviews) {
-      const reviewsContainer = document.getElementById('reviews');
-      reviewsContainer.innerHTML = ''; // Clear previous reviews
+    function displayStats(reviewData) {
+      const statsContainer = document.getElementById('stats');
+      statsContainer.innerHTML = ''; 
 
-      reviews.forEach(review => {
-        const reviewDiv = document.createElement('div');
-        reviewDiv.classList.add('review');
+      const overallRatingDiv = document.createElement('div');
+      overallRatingDiv.classList.add('star-rating');
+      overallRatingDiv.innerHTML = `${getStarRating(reviewData.overallRating)} (${reviewData.overallRating})`;
+      statsContainer.appendChild(overallRatingDiv);
 
-        const userName = document.createElement('h4');
-        userName.textContent = review.userName;
-        reviewDiv.appendChild(userName);
+      const totalReviewsDiv = document.createElement('div');
+      totalReviewsDiv.textContent = `Total Reviews: ${reviewData.totalReviews}`;
+      statsContainer.appendChild(totalReviewsDiv);
 
-        const rating = document.createElement('span');
-        rating.classList.add('rating');
-        rating.textContent = '⭐'.repeat(Math.floor(review.rating)) + (review.rating % 1 ? '½' : '');
-        reviewDiv.appendChild(rating);
-
-        const reviewText = document.createElement('p');
-        reviewText.textContent = review.reviewText;
-        reviewDiv.appendChild(reviewText);
-
-        reviewsContainer.appendChild(reviewDiv);
+      Object.entries(reviewData.starRatings).forEach(([stars, count]) => {
+        const starRatingDiv = document.createElement('div');
+        starRatingDiv.textContent = `${stars} stars, ${count.toLocaleString()} reviews`;
+        statsContainer.appendChild(starRatingDiv);
       });
+    }
+
+    function getStarRating(rating) {
+      const fullStars = Math.floor(rating);
+      const halfStar = rating % 1 >= 0.5 ? '⭐' : '';
+      const emptyStars = 5 - Math.ceil(rating);
+      const starDisplay = '⭐'.repeat(fullStars) + halfStar + '☆'.repeat(emptyStars);
+      return starDisplay;
     }
   </script>
 </body>

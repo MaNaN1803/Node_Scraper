@@ -1,15 +1,15 @@
 const express = require('express');
-const { Builder, By } = require('selenium-webdriver');
-const cheerio = require('cheerio');
+const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
+const cheerio = require('cheerio');
 const app = express();
 const PORT = 3000;
 const cors = require('cors');
 
 app.use(cors());
-
 app.use(express.json());
 
+// Function to initialize WebDriver in headless mode
 async function initDriver() {
   const options = new chrome.Options()
     .addArguments('--headless')
@@ -21,45 +21,69 @@ async function initDriver() {
   return driver;
 }
 
-async function scrapeReviews(url, numReviews) {
+// Function to scrape reviews from a Google Maps URL
+async function scrapeReviews(url) {
   const driver = await initDriver();
   await driver.get(url);
-  await driver.sleep(3000);
+  await driver.sleep(3000); // Wait for page to load
 
-  for (let i = 0; i < Math.ceil(numReviews / 10); i++) {
+  // Scroll until no more new reviews are loaded
+  let lastHeight = await driver.executeScript('return document.body.scrollHeight');
+  while (true) {
     await driver.executeScript('window.scrollTo(0, document.body.scrollHeight);');
-    await driver.sleep(2000); 
+    await driver.sleep(2000); // Wait for content to load
+    let newHeight = await driver.executeScript('return document.body.scrollHeight');
+    if (newHeight === lastHeight) {
+      break;
+    }
+    lastHeight = newHeight;
   }
 
+  // Parse page source using cheerio
   const pageSource = await driver.getPageSource();
   const $ = cheerio.load(pageSource);
-  
-  const reviews = [];
-  const reviewElements = $('.jftiEf.fontBodyMedium').slice(0, numReviews);
-  
-  reviewElements.each((_, reviewElement) => {
-    try {
-      const userName = $(reviewElement).find('button.WEBjve').attr('aria-label').replace('Photo of ', '');
-      const rating = $(reviewElement).find('span.kvMYJc').attr('aria-label').split(' ')[0];
-      const reviewText = $(reviewElement).find('span.wiI7pd').text().trim();
-      reviews.push({ userName, rating, reviewText });
-    } catch (error) {
-      console.error(`Error extracting review: ${error}`);
-    }
-  });
+
+  // Extract overall rating
+  let overallRating;
+  try {
+    overallRating = $('div.fontDisplayLarge').text().trim();
+  } catch (error) {
+    overallRating = 'N/A';
+    console.error(`Error extracting overall rating: ${error}`);
+  }
+
+  // Extract star rating breakdown (e.g., 5 stars, 10 reviews)
+  let starRatings = {};
+  try {
+    $('tr.BHOKXe').each((_, starRow) => {
+      const starInfo = $(starRow).attr('aria-label');
+      const parts = starInfo.split(', ');
+      const stars = parts[0].split(' ')[0];
+      const count = parseInt(parts[1].split(' ')[0].replace(',', ''), 10);
+      starRatings[stars] = count;
+    });
+  } catch (error) {
+    console.error(`Error extracting star ratings: ${error}`);
+  }
+
+  // Calculate total reviews
+  const totalReviews = Object.values(starRatings).reduce((acc, val) => acc + val, 0);
 
   await driver.quit();
-  return reviews;
+  return { overallRating, starRatings, totalReviews };
 }
 
+// API endpoint to scrape reviews from Google Maps
 app.post('/scrape-reviews', async (req, res) => {
-  const { url, numReviews } = req.body;
+  const { url } = req.body;
   try {
-    const reviews = await scrapeReviews(url, numReviews);
-    res.json(reviews);
+    const reviewData = await scrapeReviews(url);
+    res.json(reviewData);
   } catch (error) {
     res.status(500).send('Error scraping reviews');
   }
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
