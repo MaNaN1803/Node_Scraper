@@ -7,7 +7,7 @@
 
   <style>
     body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    .container { max-width: 600px; width: 100%; text-align: center; }
+    .container { max-width: 600px; width: 100%; }
     .form-group { margin-bottom: 15px; }
     label { display: block; margin-bottom: 5px; }
     input[type="text"] { width: 100%; padding: 8px; }
@@ -15,10 +15,10 @@
     .reviews { margin-top: 20px; width: 100%; }
     .review { padding: 10px; border-bottom: 1px solid #ddd; }
     .review h4 { margin: 0; font-size: 1.1em; }
-    .stats { margin-top: 20px; width: 100%; text-align: center; }
-    .stars { font-size: 30px; color: #FFD700; } /* Adjusted for larger, gold stars */
-    .rating-info { font-size: 18px; color: #555; margin-top: 5px; }
-    .star-rating { font-size: 24px; }
+    .rating { color: gold; }
+    .stats { margin-top: 20px; width: 100%; }
+    .stats div { margin-bottom: 10px; }
+    .star-rating { font-size: 20px; }
   </style>
 </head>
 <body>
@@ -30,10 +30,8 @@
     </div>
     <button onclick="fetchReviews()">Get Reviews</button>
 
-    <!-- Display overall rating and stats -->
     <div class="stats" id="stats"></div>
 
-    <!-- Display individual reviews -->
     <div class="reviews" id="reviews"></div>
   </div>
 
@@ -65,20 +63,22 @@
       const statsContainer = document.getElementById('stats');
       statsContainer.innerHTML = ''; 
 
-      // Display overall rating with stars and numeric rating
       const overallRatingDiv = document.createElement('div');
-      overallRatingDiv.classList.add('stars');
-      overallRatingDiv.innerHTML = getStarRating(reviewData.overallRating);
+      overallRatingDiv.classList.add('star-rating');
+      overallRatingDiv.innerHTML = `${getStarRating(reviewData.overallRating)} (${reviewData.overallRating})`;
       statsContainer.appendChild(overallRatingDiv);
 
-      // Display rating info below stars
-      const ratingInfoDiv = document.createElement('div');
-      ratingInfoDiv.classList.add('rating-info');
-      ratingInfoDiv.innerHTML = `${reviewData.overallRating} Stars | ${reviewData.totalReviews.toLocaleString()} reviews`;
-      statsContainer.appendChild(ratingInfoDiv);
+      const totalReviewsDiv = document.createElement('div');
+      totalReviewsDiv.textContent = `Total Reviews: ${reviewData.totalReviews}`;
+      statsContainer.appendChild(totalReviewsDiv);
+
+      Object.entries(reviewData.starRatings).forEach(([stars, count]) => {
+        const starRatingDiv = document.createElement('div');
+        starRatingDiv.textContent = `${stars} stars, ${count.toLocaleString()} reviews`;
+        statsContainer.appendChild(starRatingDiv);
+      });
     }
 
-    // Function to convert numeric rating to star symbols
     function getStarRating(rating) {
       const fullStars = Math.floor(rating);
       const halfStar = rating % 1 >= 0.5 ? '⭐' : '';
