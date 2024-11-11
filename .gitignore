@@ -1,0 +1,25 @@
+# Node.js and npm
+node_modules/
+npm-debug.log
+package-lock.json
+
+# MongoDB
+data/
+
+# Express
+config/
+
+# React
+build/
+public/
+
+# General
+.DS_Store
+.env
+.idea/
+.vscode/
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini

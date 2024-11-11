@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Maps Review Scraper</title>
+  <style>
+    body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    .container { max-width: 600px; width: 100%; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 8px; }
+    button { padding: 10px 15px; cursor: pointer; }
+    .reviews { margin-top: 20px; }
+    .review { padding: 10px; border-bottom: 1px solid #ddd; }
+    .review h4 { margin: 0; font-size: 1.1em; }
+    .rating { color: gold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Google Maps Review Scraper</h1>
+    <div class="form-group">
+      <label for="url">Google Maps URL:</label>
+      <input type="text" id="url" placeholder="Enter Google Maps URL">
+    </div>
+    <div class="form-group">
+      <label for="numReviews">Number of Reviews:</label>
+      <input type="number" id="numReviews" placeholder="Enter number of reviews">
+    </div>
+    <button onclick="fetchReviews()">Get Reviews</button>
+    <div class="reviews" id="reviews"></div>
+  </div>
+
+  <script>
+    async function fetchReviews() {
+      const url = document.getElementById('url').value;
+      const numReviews = parseInt(document.getElementById('numReviews').value);
+
+      if (!url || !numReviews) {
+        alert('Please enter both URL and number of reviews.');
+        return;
+      }
+
+      const response = await fetch('http://localhost:3000/scrape-reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, numReviews })
+      });
+
+      if (!response.ok) {
+        alert('Error fetching reviews');
+        return;
+      }
+
+      const reviews = await response.json();
+      displayReviews(reviews);
+    }
+
+    function displayReviews(reviews) {
+      const reviewsContainer = document.getElementById('reviews');
+      reviewsContainer.innerHTML = ''; // Clear previous reviews
+
+      reviews.forEach(review => {
+        const reviewDiv = document.createElement('div');
+        reviewDiv.classList.add('review');
+
+        const userName = document.createElement('h4');
+        userName.textContent = review.userName;
+        reviewDiv.appendChild(userName);
+
+        const rating = document.createElement('span');
+        rating.classList.add('rating');
+        rating.textContent = '⭐'.repeat(Math.floor(review.rating)) + (review.rating % 1 ? '½' : '');
+        reviewDiv.appendChild(rating);
+
+        const reviewText = document.createElement('p');
+        reviewText.textContent = review.reviewText;
+        reviewDiv.appendChild(reviewText);
+
+        reviewsContainer.appendChild(reviewDiv);
+      });
+    }
+  </script>
+</body>
+</html>
